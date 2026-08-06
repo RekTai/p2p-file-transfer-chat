@@ -56,7 +56,7 @@ This prevents browser memory (RAM) crashes, as WebRTC data is currently buffered
     
 -   **Handshake:** The custom handshake ensures you never receive unwanted files.
 
-    
+     
 
 ### License
 MIT
