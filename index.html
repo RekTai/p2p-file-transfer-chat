@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>P2P File Transfer Chat</title>
+    // Version V1.6_en
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --header-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --my-msg: #6366f1;
+            --other-msg: #f1f5f9;
+            --system-bg: #f1f5f9;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body.dark-mode {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --header-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --my-msg: #4f46e5;
+            --other-msg: #334155;
+            --system-bg: #1e293b;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background 0.3s ease, color 0.3s ease, border 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--header-bg);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            border-radius: 50%;
+        }
+
+        .theme-toggle:hover {
+            background: var(--other-msg);
+            color: var(--primary);
+        }
+
+        .connection-card {
+            padding: 15px;
+            background: var(--system-bg);
+            margin: 10px;
+            border-radius: 12px;
+        }
+
+        .my-id-container {
+            display: flex;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-top: 5px;
+            gap: 10px;
+        }
+
+        .id-display {
+            flex: 1;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 13px;
+            color: var(--primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .id-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            cursor: pointer;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+        }
+
+        .icon-btn:hover {
+            color: var(--primary);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+        button:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--card-bg);
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .msg-self {
+            align-self: flex-end;
+            background: var(--my-msg);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg-other {
+            align-self: flex-start;
+            background: var(--other-msg);
+            border-bottom-left-radius: 2px;
+            color: var(--text-main);
+        }
+
+        .msg-system {
+            align-self: center;
+            background: var(--system-bg);
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px 12px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .msg-error {
+            background: #fee2e2;
+            color: #ef4444;
+            border: 1px solid #fecaca;
+        }
+
+        .handshake-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 5px;
+            color: var(--text-main);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .btn-accept {
+            background: var(--success);
+            flex: 1;
+            justify-content: center;
+            font-size: 12px;
+            padding: 8px;
+        }
+
+        .btn-decline {
+            background: var(--danger);
+            flex: 1;
+            justify-content: center;
+            font-size: 12px;
+            padding: 8px;
+        }
+
+        .input-area {
+            padding: 15px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: var(--header-bg);
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .status-text {
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <header>
+            <div class="logo"><i data-lucide="shield-check"></i> <span>P2P Pro</span></div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="theme-toggle" onclick="toggleTheme()"><i data-lucide="moon" id="theme-icon"></i></div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span id="status-label" class="status-text" style="color: var(--text-muted);">Offline</span>
+                    <div id="status-dot" style="width:8px; height:8px; background:#cbd5e1; border-radius:50%"></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="connection-card">
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">MY ID & INVITE LINK</span>
+            <div class="my-id-container">
+                <span id="my-id" class="id-display">Connecting...</span>
+                <div class="id-actions">
+                    <div class="icon-btn" onclick="copyId()" title="Copy ID"><i data-lucide="copy" size="16"></i></div>
+                    <div class="icon-btn" onclick="copyInviteLink()" title="Copy Invite Link"><i data-lucide="share-2" size="16"></i></div>
+                </div>
+            </div>
+            <div class="input-group">
+                <input type="text" id="peer-id-input" placeholder="Partner ID...">
+                <button id="connect-btn" onclick="connectToPeer()" title="Connect"><i data-lucide="link"></i></button>
+                <button id="disconnect-btn" onclick="disconnectPeer()" class="btn-danger" style="display: none;" title="Disconnect"><i data-lucide="log-out"></i></button>
+            </div>
+        </div>
+
+        <div id="chat-window">
+            <div class="msg-system">Encrypted P2P Session</div>
+        </div>
+
+        <div class="input-area">
+            <label style="cursor:pointer; color: var(--text-muted); padding: 5px;">
+                <i data-lucide="paperclip"></i>
+                <input type="file" id="file-input" style="display:none" onchange="initiateFileTransfer()">
+            </label>
+            <input type="text" id="message-input" placeholder="Message..." style="flex:1" onkeypress="if(event.key==='Enter') sendMessage()">
+            <button id="send-btn" onclick="sendMessage()" disabled><i data-lucide="send"></i></button>
+        </div>
+    </div>
+
+    <div id="toast">Copied!</div>
+
+    <script>
+        let peer, conn;
+        let pendingFile = null;
+        const MAX_SIZE_MB = 50;
+
+        function getPartnerFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('partner');
+        }
+
+        function copyInviteLink() {
+            const id = document.getElementById("my-id").innerText;
+            if (id.includes("...")) return;
+
+            // Build the URL with the partner parameter
+            const url = new URL(window.location.href);
+            url.searchParams.set('partner', id);
+
+            navigator.clipboard.writeText(url.toString());
+            showToast("Invite link copied!");
+        }
+
+        // --- THEME LOGIC ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.body.classList.add('dark-mode');
+            }
+            updateThemeIcon();
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isDark = document.body.classList.contains('dark-mode');
+            document.getElementById('theme-icon').setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+            lucide.createIcons();
+        }
+
+        // --- P2P LOGIC ---
+        function init() {
+            initTheme();
+            peer = new Peer();
+
+            peer.on('open', id => {
+                document.getElementById("my-id").innerText = id;
+                updateStatus("Ready", "var(--warning)");
+                lucide.createIcons();
+
+                // AUTO-CONNECT if partner ID is in URL
+                const partnerId = getPartnerFromUrl();
+                if (partnerId) {
+                    addMessage("system", "Auto-connecting to partner from link...");
+                    document.getElementById("peer-id-input").value = partnerId;
+                    setTimeout(() => connectToPeer(partnerId), 500); // Small delay to ensure stability
+                }
+            });
+
+            peer.on('disconnected', () => {
+                updateStatus("Disconnected", "var(--danger)");
+                peer.reconnect();
+            });
+            peer.on('error', err => {
+                addMessage("error", "Error: " + err.type);
+                resetConnectButton();
+            });
+            peer.on('connection', c => {
+                conn = c;
+                setupConnection();
+            });
+        }
+
+        function connectToPeer(forcedId = null) {
+            const id = forcedId || document.getElementById("peer-id-input").value.trim();
+            if (!id || id === peer.id) return;
+
+            const btn = document.getElementById("connect-btn");
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i>';
+            lucide.createIcons();
+
+            conn = peer.connect(id, {
+                reliable: true
+            });
+            setupConnection();
+        }
+
+        function disconnectPeer() {
+            if (conn) conn.close();
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                updateStatus("Connected", "var(--success)");
+                document.getElementById("send-btn").disabled = false;
+                document.getElementById("disconnect-btn").style.display = "flex";
+                resetConnectButton(true);
+                addMessage("system", "Direct connection established.");
+            });
+
+            conn.on('data', data => {
+                if (data.type === "chat") addMessage("other", data.text);
+                else if (data.type === "file-request") handleFileRequest(data);
+                else if (data.type === "file-response") handleFileResponse(data);
+                else if (data.type === "file-data") finalizeFileDownload(data);
+                else if (data.type === "file-finished") updateSenderStatus(data.fileName);
+            });
+
+            conn.on('close', () => {
+                updateStatus("Ready", "var(--warning)");
+                document.getElementById("send-btn").disabled = true;
+                document.getElementById("disconnect-btn").style.display = "none";
+                resetConnectButton();
+                addMessage("system", "Connection ended.");
+            });
+        }
+
+        function initiateFileTransfer() {
+            const file = document.getElementById('file-input').files[0];
+            if (!file || !conn?.open) return;
+            if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+                addMessage("error", `Limit: ${MAX_SIZE_MB}MB`);
+                return;
+            }
+            pendingFile = file;
+            addMessage("system", `Requesting to send: ${file.name}`);
+            conn.send({
+                type: "file-request",
+                fileName: file.name,
+                fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB"
+            });
+        }
+
+        function handleFileRequest(data) {
+            const win = document.getElementById("chat-window");
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "message msg-other";
+            const cardId = "card-" + Date.now();
+            msgDiv.innerHTML = `
+            <div class="handshake-card" id="${cardId}">
+                <div style="font-weight:bold; font-size:11px; margin-bottom:5px; color:var(--primary)">FILE REQUEST</div>
+                <div style="font-size:13px; font-weight:600;">${escapeHTML(data.fileName)}</div>
+                <div style="font-size:11px; margin-bottom:10px; color:var(--text-muted)">${data.fileSize}</div>
+                <div class="btn-group">
+                    <button class="btn-accept" onclick="respondToFile(true, this, '${cardId}')">Accept</button>
+                    <button class="btn-decline" onclick="respondToFile(false, this, '${cardId}')">Deny</button>
+                </div>
+            </div>
+        `;
+            win.appendChild(msgDiv);
+            win.scrollTo({
+                top: win.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function respondToFile(accepted, btn, cardId) {
+            const card = document.getElementById(cardId);
+            card.innerHTML = accepted ? `<div id="status-${cardId}">⌛ Receiving...</div>` : "❌ Denied";
+            conn.send({
+                type: "file-response",
+                accepted: accepted,
+                cardId: cardId
+            });
+        }
+
+        function handleFileResponse(data) {
+            if (data.accepted && pendingFile) {
+                const uploadId = "upload-" + Date.now();
+                addMessage("system", `Uploading: ${pendingFile.name}...`, uploadId);
+                conn.send({
+                    type: "file-data",
+                    fileName: pendingFile.name,
+                    fileData: pendingFile,
+                    fileType: pendingFile.type,
+                    cardId: data.cardId,
+                    uploadId: uploadId
+                });
+                pendingFile = null;
+            } else {
+                addMessage("system", "File request denied.");
+                pendingFile = null;
+            }
+        }
+
+        function finalizeFileDownload(data) {
+            const blob = new Blob([data.fileData], {
+                type: data.fileType
+            });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.fileName;
+            a.click();
+            const statusEl = document.getElementById(`status-${data.cardId}`);
+            if (statusEl) statusEl.innerText = "✅ Received & Saved";
+            addMessage("system", "✅ Received: " + data.fileName);
+            conn.send({
+                type: "file-finished",
+                fileName: data.fileName,
+                uploadId: data.uploadId
+            });
+        }
+
+        function updateSenderStatus(fileName) {
+            const systems = document.querySelectorAll('.msg-system');
+            for (let i = systems.length - 1; i >= 0; i--) {
+                if (systems[i].innerText.includes("Uploading: " + fileName)) {
+                    systems[i].innerText = `✅ Successfully sent: ${fileName}`;
+                    break;
+                }
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("message-input");
+            if (input.value.trim() && conn?.open) {
+                conn.send({
+                    type: "chat",
+                    text: input.value
+                });
+                addMessage("self", input.value);
+                input.value = "";
+            }
+        }
+
+        function addMessage(side, text, id = null) {
+            const win = document.getElementById("chat-window");
+            const div = document.createElement("div");
+            div.className = side === "error" ? "msg-system msg-error" : (side === "system" ? "msg-system" : `message msg-${side}`);
+            if (id) div.id = id;
+            div.innerText = text;
+            win.appendChild(div);
+            win.scrollTo({
+                top: win.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function updateStatus(text, color) {
+            document.getElementById("status-label").innerText = text;
+            document.getElementById("status-label").style.color = color;
+            document.getElementById("status-dot").style.background = color;
+        }
+
+        function resetConnectButton(isConnected = false) {
+            const btn = document.getElementById("connect-btn");
+            btn.disabled = isConnected;
+            btn.innerHTML = isConnected ? '<i data-lucide="check"></i>' : '<i data-lucide="link"></i>';
+            lucide.createIcons();
+        }
+
+        function showToast(text) {
+            const t = document.getElementById("toast");
+            t.innerText = text;
+            t.style.display = "block";
+            setTimeout(() => t.style.display = "none", 2000);
+        }
+
+        function copyId() {
+            const id = document.getElementById("my-id").innerText;
+            if (id.includes("...")) return;
+            navigator.clipboard.writeText(id);
+            showToast("ID copied!");
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            } [m]));
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
