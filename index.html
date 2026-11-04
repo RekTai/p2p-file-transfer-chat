@@ -214,6 +214,52 @@
             white-space: pre-wrap;
         }
 
+        .message-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .message-row-self {
+            flex-direction: row-reverse;
+            justify-content: flex-start;
+        }
+
+        .message-row-other {
+            justify-content: flex-start;
+        }
+
+        .message-row .message {
+            align-self: flex-start;
+            max-width: calc(85% - 24px);
+        }
+
+        .message-text {
+            overflow-wrap: anywhere;
+        }
+
+        .message-copy {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            margin-top: 6px;
+            padding: 3px;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-muted);
+            opacity: 0.7;
+            cursor: pointer;
+        }
+
+        .message-copy:hover,
+        .message-copy:focus-visible {
+            color: var(--primary);
+            opacity: 1;
+        }
+
         .msg-self {
             align-self: flex-end;
             background: var(--my-msg);
@@ -599,14 +645,45 @@
         function addMessage(side, text, id = null) {
             const win = document.getElementById("chat-window");
             const div = document.createElement("div");
-            div.className = side === "error" ? "msg-system msg-error" : (side === "system" ? "msg-system" : `message msg-${side}`);
+            const isChatMessage = side === "self" || side === "other";
+            div.className = isChatMessage ? `message-row message-row-${side}` : (side === "error" ? "msg-system msg-error" : "msg-system");
             if (id) div.id = id;
-            div.innerText = text;
+            if (isChatMessage) {
+                const bubble = document.createElement("div");
+                bubble.className = `message msg-${side}`;
+                const messageText = document.createElement("span");
+                messageText.className = "message-text";
+                messageText.innerText = text;
+                bubble.appendChild(messageText);
+
+                const copyButton = document.createElement("button");
+                copyButton.type = "button";
+                copyButton.className = "message-copy";
+                copyButton.title = "Copy message";
+                copyButton.setAttribute("aria-label", "Copy message");
+                copyButton.innerHTML = '<i data-lucide="copy" size="14"></i>';
+                copyButton.addEventListener("click", () => copyMessage(text));
+
+                div.append(bubble, copyButton);
+            } else {
+                div.innerText = text;
+            }
             win.appendChild(div);
+            if (isChatMessage) lucide.createIcons();
             win.scrollTo({
                 top: win.scrollHeight,
                 behavior: 'smooth'
             });
+        }
+
+        async function copyMessage(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast("Message copied!");
+            } catch (error) {
+                console.error("Failed to copy message:", error);
+                showToast("Unable to copy message.");
+            }
         }
 
         function updateStatus(text, color) {
